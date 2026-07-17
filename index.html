@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Down Semi-Auto Laser Shooter</title>
+    <title>Top-Down Laser Shooter with Hit Detection</title>
     <style>
         body { margin: 0; background: #111; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         canvas { background: #222; border: 2px solid #444; cursor: crosshair; }
@@ -22,12 +22,12 @@
         const keys = {};
         let mouseX = 0, mouseY = 0;
         
-        // Dummy Players (Blue Circles)
-        const dummyPlayers = [
-            { x: 150, y: 150, radius: 15 },
-            { x: 650, y: 150, radius: 15 },
-            { x: 200, y: 450, radius: 15 },
-            { x: 600, y: 450, radius: 15 }
+        // Target Players (Blue Circles)
+        let dummyPlayers = [
+            { id: 1, x: 150, y: 150, radius: 15 },
+            { id: 2, x: 650, y: 150, radius: 15 },
+            { id: 3, x: 200, y: 450, radius: 15 },
+            { id: 4, x: 600, y: 450, radius: 15 }
         ];
 
         // Semi-Auto Weapon Variables
@@ -45,10 +45,54 @@
         
         // Semi-automatic trigger: Fires exactly once per discrete click
         window.addEventListener("mousedown", (e) => {
-            if (e.button === 0) { // Left click only
+            if (e.button === 0 && laserTimer === 0) { // Left click only when laser isn't active
                 laserTimer = laserDuration;
+                checkLaserHits();
             }
         });
+
+        // Helper function: Calculates if a line segment intersects a circle
+        function checkLaserHits() {
+            const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            const laserLength = 1000; 
+            const targetX = player.x + Math.cos(angle) * laserLength;
+            const targetY = player.y + Math.sin(angle) * laserLength;
+
+            // Filter out any blue players that get clipped by the beam
+            dummyPlayers = dummyPlayers.filter(p => {
+                // Vector math to find the closest point on the laser line to the circle center
+                const A = player.x - p.x;
+                const B = player.y - p.y;
+                const C = targetX - player.x;
+                const D = targetY - player.y;
+
+                const dot = A * C + B * D;
+                const lenSq = C * C + D * D;
+                let param = -1;
+                
+                if (lenSq !== 0) param = dot / lenSq;
+
+                let xx, yy;
+
+                if (param < 0) {
+                    xx = player.x;
+                    yy = player.y;
+                } else if (param > 1) {
+                    xx = targetX;
+                    yy = targetY;
+                } else {
+                    xx = player.x + param * C;
+                    yy = player.y + param * D;
+                }
+
+                const dx = p.x - xx;
+                const dy = p.y - yy;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Keep the player if the distance to the beam is greater than its physical radius
+                return distance > p.radius;
+            });
+        }
 
         // Game Loop
         function update() {
@@ -88,7 +132,7 @@
                 ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"; // Faint red targeting line
                 ctx.lineWidth = 2;                  // Thin guide line
                 ctx.shadowBlur = 0;                 // No glow
-                ctx.setLineDash([4, 4]);           // Dashed line
+                ctx.setLineDash([5, 5]);           // Dashed line
             }
 
             // Draw Laser
