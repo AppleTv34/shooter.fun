@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Down Shooter</title>
+    <title>Top-Down Shooter with Laser Sight</title>
     <style>
         body { margin: 0; background: #111; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        canvas { background: #222; border: 2px solid #444; }
+        canvas { background: #222; border: 2px solid #444; cursor: crosshair; }
     </style>
 </head>
 <body>
@@ -58,7 +58,6 @@
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].x += bullets[i].vx;
                 bullets[i].y += bullets[i].vy;
-                // Remove out of bounds bullets
                 if (bullets[i].x < 0 || bullets[i].x > canvas.width || bullets[i].y < 0 || bullets[i].y > canvas.height) {
                     bullets.splice(i, 1);
                 }
@@ -67,6 +66,22 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Laser Aim Indicator
+            const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+            // Calculate a point far away along the aim angle
+            const laserLength = 1000; 
+            const targetX = player.x + Math.cos(angle) * laserLength;
+            const targetY = player.y + Math.sin(angle) * laserLength;
+
+            ctx.strokeStyle = "rgba(255, 0, 0, 0.35)"; // Semi-transparent red
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 10]); // Creates a dashed line effect
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash so it doesn't affect other drawings
 
             // Draw Bullets
             ctx.fillStyle = "#ffcc00";
@@ -92,4 +107,3 @@
     </script>
 </body>
 </html>
-
