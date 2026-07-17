@@ -1,18 +1,28 @@
-// --- 1. SETUP SCENE, CAMERA, & WEBGL RENDERER ---
+// --- 1. FORCE REAL SCREEN DIMENSIONS (FIXES BLACK SCREEN) ---
+let width = window.innerWidth || 800;
+let height = window.innerHeight || 600;
+
+// If the browser reports 0, force it to use standard screen scales
+if (width === 0 || height === 0) {
+    width = 1280;
+    height = 720;
+}
+
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xefd1b5); 
+scene.background = new THREE.Color(0xefd1b5); // Dust-peach sky color
 scene.fog = new THREE.FogExp2(0xefd1b5, 0.015);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.y = 1.6; 
+const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+camera.position.set(0, 1.6, 5); // Position camera slightly back from the origin
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(width, height);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- 2. LIGHTING ---
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -28,6 +38,7 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
+// Simple box creation using basic meshes
 const boxGeo = new THREE.BoxGeometry(2, 2, 2);
 const boxMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B }); 
 for (let i = 0; i < 15; i++) {
@@ -82,10 +93,13 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+// --- 6. AUTO-RESIZE HANDLER ---
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(w, h);
 });
 
 animate();
