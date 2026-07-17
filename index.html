@@ -22,9 +22,17 @@
         const keys = {};
         let mouseX = 0, mouseY = 0;
         
+        // Dummy Players (Blue Circles)
+        const dummyPlayers = [
+            { x: 150, y: 150, radius: 15 },
+            { x: 650, y: 150, radius: 15 },
+            { x: 200, y: 450, radius: 15 },
+            { x: 600, y: 450, radius: 15 }
+        ];
+
         // Semi-Auto Weapon Variables
         let laserTimer = 0;          // How long the yellow flash stays on screen
-        const laserDuration = 8;    // Frames the yellow laser remains visible (approx. 0.13 seconds)
+        const laserDuration = 8;    // Frames the yellow laser remains visible
 
         // Input Listeners
         window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
@@ -89,11 +97,19 @@
             ctx.lineTo(targetX, targetY);
             ctx.stroke();
 
-            // Reset effects so they don't apply to the player circle
+            // Reset effects so they don't apply to circles
             ctx.setLineDash([]);
             ctx.shadowBlur = 0;
 
-            // Draw Player (Red Circle)
+            // Draw Other Players (Blue Circles)
+            ctx.fillStyle = "#0077ff";
+            dummyPlayers.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw Controlling Player (Red Circle)
             ctx.fillStyle = "red";
             ctx.beginPath();
             ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
