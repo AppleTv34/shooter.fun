@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Down Shooter with Laser Sight</title>
+    <title>Top-Down Laser Shooter</title>
     <style>
         body { margin: 0; background: #111; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         canvas { background: #222; border: 2px solid #444; cursor: crosshair; }
@@ -20,8 +20,8 @@
         // Game Objects
         const player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15, speed: 4 };
         const keys = {};
-        const bullets = [];
         let mouseX = 0, mouseY = 0;
+        let isShooting = false;
 
         // Input Listeners
         window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
@@ -31,16 +31,10 @@
             mouseX = e.clientX - rect.left;
             mouseY = e.clientY - rect.top;
         });
-        window.addEventListener("mousedown", () => {
-            const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-            bullets.push({
-                x: player.x,
-                y: player.y,
-                vx: Math.cos(angle) * 7,
-                vy: Math.sin(angle) * 7,
-                radius: 4
-            });
-        });
+        
+        // Shoot on mouse press, stop shooting on release
+        window.addEventListener("mousedown", () => isShooting = true);
+        window.addEventListener("mouseup", () => isShooting = false);
 
         // Game Loop
         function update() {
@@ -53,43 +47,40 @@
             // Boundaries
             player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
             player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
-
-            // Move Bullets
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].x += bullets[i].vx;
-                bullets[i].y += bullets[i].vy;
-                if (bullets[i].x < 0 || bullets[i].x > canvas.width || bullets[i].y < 0 || bullets[i].y > canvas.height) {
-                    bullets.splice(i, 1);
-                }
-            }
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw Laser Aim Indicator
+            // Calculate Aim Angle and Laser Path
             const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-            // Calculate a point far away along the aim angle
             const laserLength = 1000; 
             const targetX = player.x + Math.cos(angle) * laserLength;
             const targetY = player.y + Math.sin(angle) * laserLength;
 
-            ctx.strokeStyle = "rgba(255, 0, 0, 0.35)"; // Semi-transparent red
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 10]); // Creates a dashed line effect
+            // Configure Laser Visuals Based on Shooting State
+            if (isShooting) {
+                ctx.strokeStyle = "#ffcc00";       // Bright yellow beam
+                ctx.lineWidth = 6;                  // Thick firing beam
+                ctx.shadowBlur = 15;                // Laser glow effect
+                ctx.shadowColor = "#ffcc00";
+                ctx.setLineDash([]);                // Solid line
+            } else {
+                ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"; // Faint red targeting line
+                ctx.lineWidth = 2;                  // Thin guide line
+                ctx.shadowBlur = 0;                 // No glow
+                ctx.setLineDash([5, 10]);           // Dashed line
+            }
+
+            // Draw Laser
             ctx.beginPath();
             ctx.moveTo(player.x, player.y);
             ctx.lineTo(targetX, targetY);
             ctx.stroke();
-            ctx.setLineDash([]); // Reset line dash so it doesn't affect other drawings
 
-            // Draw Bullets
-            ctx.fillStyle = "#ffcc00";
-            bullets.forEach(b => {
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-                ctx.fill();
-            });
+            // Reset effects so they don't apply to the player circle
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
 
             // Draw Player (Red Circle)
             ctx.fillStyle = "red";
