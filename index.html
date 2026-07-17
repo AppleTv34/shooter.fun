@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Down Laser Shooter with Hit Detection</title>
+    <title>Top-Down Laser Shooter with Raycast Intersection</title>
     <style>
         body { margin: 0; background: #111; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         canvas { background: #222; border: 2px solid #444; cursor: crosshair; }
@@ -33,6 +33,7 @@
         // Semi-Auto Weapon Variables
         let laserTimer = 0;          // How long the yellow flash stays on screen
         const laserDuration = 8;    // Frames the yellow laser remains visible
+        let activeLaserEnd = { x: 0, y: 0 }; // Stores exactly where the laser stops
 
         // Input Listeners
         window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
@@ -43,55 +44,70 @@
             mouseY = e.clientY - rect.top;
         });
         
-        // Semi-automatic trigger: Fires exactly once per discrete click
+        // Semi-automatic trigger
         window.addEventListener("mousedown", (e) => {
-            if (e.button === 0 && laserTimer === 0) { // Left click only when laser isn't active
+            if (e.button === 0 && laserTimer === 0) { 
                 laserTimer = laserDuration;
-                checkLaserHits();
+                calculateLaserPath();
             }
         });
 
-        // Helper function: Calculates if a line segment intersects a circle
-        function checkLaserHits() {
+        // Processes laser line calculation and handles collision stopping
+        function calculateLaserPath() {
             const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-            const laserLength = 1000; 
-            const targetX = player.x + Math.cos(angle) * laserLength;
-            const targetY = player.y + Math.sin(angle) * laserLength;
+            const maxLaserLength = 2000; // Projects far off-screen
+            
+            let targetX = player.x + Math.cos(angle) * maxLaserLength;
+            let targetY = player.y + Math.sin(angle) * maxLaserLength;
+            
+            let closestDistance = maxLaserLength;
+            let hitPlayerId = null;
 
-            // Filter out any blue players that get clipped by the beam
-            dummyPlayers = dummyPlayers.filter(p => {
-                // Vector math to find the closest point on the laser line to the circle center
-                const A = player.x - p.x;
-                const B = player.y - p.y;
-                const C = targetX - player.x;
-                const D = targetY - player.y;
-
-                const dot = A * C + B * D;
-                const lenSq = C * C + D * D;
-                let param = -1;
+            // Check every single player to find the absolute closest one intersecting the beam
+            dummyPlayers.forEach(p => {
+                // Vector math to project the circle center onto the laser ray line
+                const rayX = Math.cos(angle);
+                const rayY = Math.sin(angle);
                 
-                if (lenSq !== 0) param = dot / lenSq;
-
-                let xx, yy;
-
-                if (param < 0) {
-                    xx = player.x;
-                    yy = player.y;
-                } else if (param > 1) {
-                    xx = targetX;
-                    yy = targetY;
-                } else {
-                    xx = player.x + param * C;
-                    yy = player.y + param * D;
+                const toCircleX = p.x - player.x;
+                const toCircleY = p.y - player.y;
+                
+                // Projection distance along the laser line
+                const projection = toCircleX * rayX + toCircleY * rayY;
+                
+                // If the circle is behind the player, ignore it
+                if (projection < 0) return;
+                
+                // Closest point coordinates on the infinite laser line
+                const closestLineX = player.x + rayX * projection;
+                const closestLineY = player.y + rayY * projection;
+                
+                // Distance from circle center to the line
+                const distanceToLine = Math.hypot(p.x - closestLineX, p.y - closestLineY);
+                
+                // If it passes through the circle radius, it is a valid hit trace
+                if (distanceToLine <= p.radius) {
+                    // Geometric offset to find the exact perimeter intersection point
+                    const offset = Math.sqrt(p.radius * p.radius - distanceToLine * distanceToLine);
+                    const hitDistance = projection - offset;
+                    
+                    // Track only the closest hit so the laser stops at the FIRST obstacle
+                    if (hitDistance < closestDistance) {
+                        closestDistance = hitDistance;
+                        hitPlayerId = p.id;
+                        targetX = player.x + rayX * hitDistance;
+                        targetY = player.y + rayY * hitDistance;
+                    }
                 }
-
-                const dx = p.x - xx;
-                const dy = p.y - yy;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                // Keep the player if the distance to the beam is greater than its physical radius
-                return distance > p.radius;
             });
+
+            // Save the coordinates where the visual laser beam will terminate
+            activeLaserEnd = { x: targetX, y: targetY };
+
+            // Instantly delete the player that blocked the beam
+            if (hitPlayerId !== null) {
+                dummyPlayers = dummyPlayers.filter(p => p.id !== hitPlayerId);
+            }
         }
 
         // Game Loop
@@ -115,11 +131,11 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Calculate Aim Angle and Laser Path
+            // Calculate Aim Angle and Default Laser Path (for the passive red target line)
             const angle = Math.atan2(mouseY - player.y, mouseX - player.x);
-            const laserLength = 1000; 
-            const targetX = player.x + Math.cos(angle) * laserLength;
-            const targetY = player.y + Math.sin(angle) * laserLength;
+            const defaultLength = 1000; 
+            const defaultTargetX = player.x + Math.cos(angle) * defaultLength;
+            const defaultTargetY = player.y + Math.sin(angle) * defaultLength;
 
             // Configure Laser Visuals Based on Timer
             if (laserTimer > 0) {
@@ -128,20 +144,26 @@
                 ctx.shadowBlur = 15;                // Laser glow effect
                 ctx.shadowColor = "#ffcc00";
                 ctx.setLineDash([]);                // Solid line
+                
+                // Draw Yellow Laser terminating exactly at the hit surface
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y);
+                ctx.lineTo(activeLaserEnd.x, activeLaserEnd.y);
+                ctx.stroke();
             } else {
                 ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"; // Faint red targeting line
                 ctx.lineWidth = 2;                  // Thin guide line
                 ctx.shadowBlur = 0;                 // No glow
-                ctx.setLineDash([5, 5]);           // Dashed line
+                ctx.setLineDash([4, 4]);           // Dashed line
+                
+                // Draw Red Guideline through space
+                ctx.beginPath();
+                ctx.moveTo(player.x, player.y);
+                ctx.lineTo(defaultTargetX, defaultTargetY);
+                ctx.stroke();
             }
 
-            // Draw Laser
-            ctx.beginPath();
-            ctx.moveTo(player.x, player.y);
-            ctx.lineTo(targetX, targetY);
-            ctx.stroke();
-
-            // Reset effects so they don't apply to circles
+            // Reset visual conditions for drawing standard circles
             ctx.setLineDash([]);
             ctx.shadowBlur = 0;
 
