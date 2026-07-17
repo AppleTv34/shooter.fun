@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browser FPS Game</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+        #crosshair {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 10px; height: 10px;
+            transform: translate(-50%, -50%);
+            border: 2px solid lime;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div id="crosshair"></div>
+    <!-- Loads Three.js WebGL Engine safely via cdnjs -->
+    <script src="https://cloudflare.com"></script>
+    <script src="game.js"></script>
+</body>
+</html>
