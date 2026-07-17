@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top-Down Laser Shooter</title>
+    <title>Top-Down Semi-Auto Laser Shooter</title>
     <style>
         body { margin: 0; background: #111; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
         canvas { background: #222; border: 2px solid #444; cursor: crosshair; }
@@ -21,7 +21,10 @@
         const player = { x: canvas.width / 2, y: canvas.height / 2, radius: 15, speed: 4 };
         const keys = {};
         let mouseX = 0, mouseY = 0;
-        let isShooting = false;
+        
+        // Semi-Auto Weapon Variables
+        let laserTimer = 0;          // How long the yellow flash stays on screen
+        const laserDuration = 8;    // Frames the yellow laser remains visible (approx. 0.13 seconds)
 
         // Input Listeners
         window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
@@ -32,9 +35,12 @@
             mouseY = e.clientY - rect.top;
         });
         
-        // Shoot on mouse press, stop shooting on release
-        window.addEventListener("mousedown", () => isShooting = true);
-        window.addEventListener("mouseup", () => isShooting = false);
+        // Semi-automatic trigger: Fires exactly once per discrete click
+        window.addEventListener("mousedown", (e) => {
+            if (e.button === 0) { // Left click only
+                laserTimer = laserDuration;
+            }
+        });
 
         // Game Loop
         function update() {
@@ -47,6 +53,11 @@
             // Boundaries
             player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
             player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+
+            // Countdown the laser flash timer
+            if (laserTimer > 0) {
+                laserTimer--;
+            }
         }
 
         function draw() {
@@ -58,8 +69,8 @@
             const targetX = player.x + Math.cos(angle) * laserLength;
             const targetY = player.y + Math.sin(angle) * laserLength;
 
-            // Configure Laser Visuals Based on Shooting State
-            if (isShooting) {
+            // Configure Laser Visuals Based on Timer
+            if (laserTimer > 0) {
                 ctx.strokeStyle = "#ffcc00";       // Bright yellow beam
                 ctx.lineWidth = 6;                  // Thick firing beam
                 ctx.shadowBlur = 15;                // Laser glow effect
@@ -69,7 +80,7 @@
                 ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"; // Faint red targeting line
                 ctx.lineWidth = 2;                  // Thin guide line
                 ctx.shadowBlur = 0;                 // No glow
-                ctx.setLineDash([5, 10]);           // Dashed line
+                ctx.setLineDash([4, 4]);           // Dashed line
             }
 
             // Draw Laser
